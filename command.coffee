@@ -6,7 +6,7 @@ _             = require 'lodash'
 MeshbluConfig = require 'meshblu-config'
 MeshbluHttp   = require 'meshblu-http'
 NodeRSA       = require 'node-rsa'
-
+crypto        = require 'crypto'
 packageJSON = require './package.json'
 
 OPTIONS = [{
@@ -25,7 +25,7 @@ class Command
     {@bobUuid} = @parseOptions()
     @config  = new MeshbluConfig()
     @meshblu = new MeshbluHttp @config.toJSON()
-
+    {@uuid} = @config.toJSON()
   parseOptions: =>
     parser = dashdash.createParser({options: OPTIONS})
     options = parser.parse(process.argv)
@@ -57,6 +57,8 @@ class Command
       @findOrCreateKeyPair
       @updatePublicKey
       @updateWhitelists
+      @getBobPublicKey
+      @addEncryptedBobKey
     ], callback
 
   findOrCreateKeyPair: (callback) =>
@@ -64,6 +66,7 @@ class Command
       {privateKey, publicKey} = JSON.parse fs.readFileSync './keys.json'
       throw new Error unless privateKey? && publicKey?
       @keys = {privateKey, publicKey}
+      @key = new NodeRSA privateKey
       return callback null
     catch
       console.warn 'no valid keys.json found, generating new pair'
@@ -84,12 +87,31 @@ class Command
         'meshblu.whitelists.broadcast.sent': uuid: @bobUuid
         'meshblu.whitelists.discover.view': uuid: @bobUuid
 
-    deviceUuid = @config.toJSON().uuid
-    @meshblu.updateDangerously deviceUuid, update, callback
+    @meshblu.updateDangerously @uuid, update, callback
+
+
+  getBobPublicKey: (callback) =>
+    @meshblu.publicKey @bobUuid, (error, {publicKey}={}) =>
+      @bobPublicKey = new NodeRSA publicKey
+      callback error
+
+  addEncryptedBobKey: (callback) =>
+    crypto.randomBytes 256, (error, random) =>
+      return callback error if error?
+      encryptedBobKey = @bobPublicKey.encrypt(random).toString 'base64'
+      encryptedKey    = @key.encrypt(random).toString 'base64'
+
+      update =
+        $set:
+          "keys.#{@bobUuid}.key": encryptedBobKey
+          "keys.#{@uuid}.key": encryptedKey
+
+      @meshblu.updateDangerously @uuid, update, callback
+
+
 
   updatePublicKey: (callback) =>
-    deviceUuid = @config.toJSON().uuid
-    @meshblu.update deviceUuid, {publicKey: @keys.publicKey}, callback
+    @meshblu.update @uuid, {publicKey: @keys.publicKey}, callback
 
   die: (error) =>
     return process.exit(0) unless error?
