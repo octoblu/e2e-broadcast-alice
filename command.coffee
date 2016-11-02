@@ -59,7 +59,19 @@ class Command
       @updateWhitelists
       @getBobPublicKey
       @addEncryptedBobKey
+      @sendEncryptedMessage
     ], callback
+
+  sendEncryptedMessage: (callback) =>
+    @meshblu.whoami (error, device) =>
+      return callback error if error?
+      encryptedKey = _.get device, "keys.#{@uuid}.key"
+      aesKey = @key.decrypt encryptedKey
+      cipher = crypto.createCipher 'aes-256-ctr', aesKey
+      encryptedMessage = cipher.update 'sup g', 'utf8', 'base64'
+      encryptedMessage += cipher.final 'base64'
+            
+      @meshblu.message devices: ['*'], encrypted: encryptedMessage, callback
 
   findOrCreateKeyPair: (callback) =>
     try
