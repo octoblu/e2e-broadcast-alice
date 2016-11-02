@@ -1,14 +1,10 @@
-colors        = require 'colors'
 dashdash      = require 'dashdash'
+MeshbluConfig = require 'meshblu-config'
+MeshbluHttp   = require 'meshblu-http'
 
 packageJSON = require './package.json'
 
 OPTIONS = [{
-  names: ['example', 'e']
-  type: 'string'
-  env: 'EXAMPLE'
-  help: 'example argument'
-}, {
   names: ['help', 'h']
   type: 'bool'
   help: 'Print this help and exit.'
@@ -21,29 +17,30 @@ OPTIONS = [{
 class Command
   constructor: ->
     process.on 'uncaughtException', @die
-    {@example} = @parseOptions()
+    {} = @parseOptions()
+    @config  = new MeshbluConfig()
+    @meshblu = new MeshbluHttp @config.toJSON()
 
   parseOptions: =>
     parser = dashdash.createParser({options: OPTIONS})
     options = parser.parse(process.argv)
 
     if options.help
-      console.log "usage: e-2-e-broadcast-alice [OPTIONS]\noptions:\n#{parser.help({includeEnv: true})}"
+      console.log "usage: e2e-broadcast-alice [OPTIONS]\noptions:\n#{parser.help({includeEnv: true})}"
       process.exit 0
 
     if options.version
       console.log packageJSON.version
       process.exit 0
 
-    if !options.example
-      console.error "usage: e-2-e-broadcast-alice [OPTIONS]\noptions:\n#{parser.help({includeEnv: true})}"
-      console.error colors.red 'Missing required parameter --example, -e, or env: EXAMPLE'
-      process.exit 1
-
     return options
 
   run: =>
-    console.log "Hi Example! #{@example}"
+    @setup (error) =>
+      return @die error if error?
+
+  setup: (callback) =>
+    callback()
 
   die: (error) =>
     return process.exit(0) unless error?

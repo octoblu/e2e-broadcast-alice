@@ -1,13 +1,13 @@
 {
-  "name": "e-2-e-broadcast-alice",
+  "name": "e2e-broadcast-alice",
   "version": "1.1.2",
   "description": "Put some description here",
   "keywords": [
     "cool",
     "module"
   ],
-  "homepage": "https://github.com/octoblu/e-2-e-broadcast-alice",
-  "bugs": "https://github.com/octoblu/e-2-e-broadcast-alice/issues",
+  "homepage": "https://github.com/octoblu/e2e-broadcast-alice",
+  "bugs": "https://github.com/octoblu/e2e-broadcast-alice/issues",
   "author": {
     "name": "Octoblu",
     "url": "https://github.com/octoblu"
@@ -15,7 +15,7 @@
   "bin": "command.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/octoblu/e-2-e-broadcast-alice.git"
+    "url": "https://github.com/octoblu/e2e-broadcast-alice.git"
   },
   "scripts": {
     "start": "node command.js",
