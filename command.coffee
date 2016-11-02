@@ -22,14 +22,16 @@ OPTIONS = [{
 class Command
   constructor: ->
     process.on 'uncaughtException', @die
-    {@bobUuid} = @parseOptions()
+    {@bobUuid, @message} = @parseOptions()
     @config  = new MeshbluConfig()
     @meshblu = new MeshbluHttp @config.toJSON()
     {@uuid} = @config.toJSON()
+
   parseOptions: =>
     parser = dashdash.createParser({options: OPTIONS})
     options = parser.parse(process.argv)
     bobUuid = _.first options._args
+    message = _.nth options._args, 1
 
     if options.help
       console.log @usage parser.help({includeEnv: true})
@@ -39,12 +41,13 @@ class Command
       console.log packageJSON.version
       process.exit 0
 
-    unless bobUuid?
+    if _.isEmpty(bobUuid) || _.isEmpty(message)
       console.error @usage parser.help({includeEnv: true})
-      console.error colors.red 'Missing required parameter <bob-uuid>'
+      console.error colors.red 'Missing required parameter <bob-uuid>' if _.isEmpty bobUuid
+      console.error colors.red 'Missing required parameter <message>' if _.isEmpty message
       process.exit 1
 
-    return {bobUuid}
+    return {bobUuid, message}
 
   run: =>
     @setup (error) =>
@@ -68,9 +71,9 @@ class Command
       encryptedKey = _.get device, "keys.#{@uuid}.key"
       aesKey = @key.decrypt encryptedKey
       cipher = crypto.createCipher 'aes-256-ctr', aesKey
-      encryptedMessage = cipher.update 'sup g', 'utf8', 'base64'
+      encryptedMessage = cipher.update @message, 'utf8', 'base64'
       encryptedMessage += cipher.final 'base64'
-            
+
       @meshblu.message devices: ['*'], encrypted: encryptedMessage, callback
 
   findOrCreateKeyPair: (callback) =>
@@ -133,7 +136,7 @@ class Command
 
   usage: (optionsStr) =>
     """
-    usage: e2e-broadcast-alice [OPTIONS] <bob-uuid>
+    usage: e2e-broadcast-alice [OPTIONS] <bob-uuid> <message>
     options:
     #{optionsStr}
     """
