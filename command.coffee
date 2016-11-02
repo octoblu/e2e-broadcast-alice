@@ -1,26 +1,36 @@
+_             = require 'lodash'
+fs            = require 'fs'
 dashdash      = require 'dashdash'
 MeshbluConfig = require 'meshblu-config'
 MeshbluHttp   = require 'meshblu-http'
 
 packageJSON = require './package.json'
 
-OPTIONS = [{
+OPTIONS = [
+  {
   names: ['help', 'h']
   type: 'bool'
   help: 'Print this help and exit.'
-}, {
-  names: ['version', 'v']
-  type: 'bool'
-  help: 'Print the version and exit.'
-}]
+  },
+  {
+    names: ['version', 'v']
+    type: 'bool'
+    help: 'Print the version and exit.'
+  }
+  {
+    names: ['add', 'a']
+    type: 'string'
+    help: 'uuid to add to the encrypted broadcast system'
+  }
+]
 
 class Command
   constructor: ->
     process.on 'uncaughtException', @die
-    {} = @parseOptions()
+    {@add} = @parseOptions()
     @config  = new MeshbluConfig()
     @meshblu = new MeshbluHttp @config.toJSON()
-
+    {@uuid, @privateKey} = @config.toJSON()
   parseOptions: =>
     parser = dashdash.createParser({options: OPTIONS})
     options = parser.parse(process.argv)
@@ -40,7 +50,24 @@ class Command
       return @die error if error?
 
   setup: (callback) =>
-    callback()
+    @_generateKeyPair (error) =>
+      return callback error if error?
+      @_addSubscriber @add, (error) =>
+        return callback error if error?
+        console.log "done."
+
+  _generateKeyPair (callback) =>
+    return callback null, @privateKey if @privateKey?
+
+  _addSubscriber: (subscriber, callback) =>
+    update =
+      $set:
+        'meshblu.version': '2.0.0'
+      $addToSet:
+        'meshblu.whitelists.broadcast.sent': uuid: subscriber
+        'meshblu.whitelists.discover.view': uuid: subscriber
+
+    @meshblu.updateDangerously @uuid, update, callback
 
   die: (error) =>
     return process.exit(0) unless error?
